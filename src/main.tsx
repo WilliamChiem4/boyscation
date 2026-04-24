@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, createBrowserRouter } from 'react-router-dom'
+import { RouterProvider, createHashRouter } from 'react-router-dom'
 import App from './App'
 import Home from './routes/Home'
 import TripDetail from './routes/TripDetail'
@@ -8,7 +8,7 @@ import TripExport from './routes/TripExport'
 import TripBudget from './routes/TripBudget'
 import './index.css'
 
-const router = createBrowserRouter([
+const router = createHashRouter([
   {
     path: '/',
     element: <App />,
