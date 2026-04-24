@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(kill %1)",
+      "Bash(pkill -f \"vite --port 5183\")",
+      "mcp__Claude_Preview__preview_start",
+      "Read(//Users/william/Desktop/**)",
+      "Bash(mv vietnam_planning boyscation)",
+      "Bash(npm run *)",
+      "Bash(gh auth *)",
+      "Bash(git --version)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
