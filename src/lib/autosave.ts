@@ -14,7 +14,7 @@ const pending = new Map<string, Pending>()
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 
 function scheduleFlush(): void {
-  if (flushTimer) return
+  if (flushTimer) clearTimeout(flushTimer)
   flushTimer = setTimeout(() => {
     flushTimer = null
     void flush()

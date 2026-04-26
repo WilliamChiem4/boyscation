@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   DndContext,
@@ -45,6 +45,23 @@ export default function TripDetail() {
 
   const [optimistic, setOptimistic] = useState<Activity[] | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+
+  const [draft, setDraft] = useState({
+    name: '',
+    destination: '',
+    travelers: '',
+    notes: '',
+  })
+
+  useEffect(() => {
+    if (!trip) return
+    setDraft({
+      name: trip.name,
+      destination: trip.destination,
+      travelers: trip.travelers.join(', '),
+      notes: trip.notes,
+    })
+  }, [trip?.id])
 
   const activities = optimistic ?? activitiesFromDb
 
@@ -249,32 +266,42 @@ export default function TripDetail() {
         )}
         <Input
           className="font-heading text-3xl md:text-4xl font-extrabold h-auto py-2 border-transparent hover:border-input focus:border-input bg-transparent"
-          value={trip.name}
+          value={draft.name}
           placeholder="Name this boyscation"
-          onChange={(e) => queueTripPatch(trip.id, { name: e.target.value })}
+          onChange={(e) => {
+            const v = e.target.value
+            setDraft((d) => ({ ...d, name: v }))
+            queueTripPatch(trip.id, { name: v })
+          }}
         />
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Destination</Label>
             <Input
-              value={trip.destination}
+              value={draft.destination}
               placeholder="Where we headed?"
-              onChange={(e) => queueTripPatch(trip.id, { destination: e.target.value })}
+              onChange={(e) => {
+                const v = e.target.value
+                setDraft((d) => ({ ...d, destination: v }))
+                queueTripPatch(trip.id, { destination: v })
+              }}
             />
           </div>
           <div className="space-y-1.5">
             <Label>The crew (comma-separated)</Label>
             <Input
-              value={trip.travelers.join(', ')}
+              value={draft.travelers}
               placeholder="Alex, Sam"
-              onChange={(e) =>
+              onChange={(e) => {
+                const v = e.target.value
+                setDraft((d) => ({ ...d, travelers: v }))
                 queueTripPatch(trip.id, {
-                  travelers: e.target.value
+                  travelers: v
                     .split(',')
                     .map((t) => t.trim())
                     .filter(Boolean),
                 })
-              }
+              }}
             />
           </div>
           <div className="space-y-1.5">
@@ -297,10 +324,14 @@ export default function TripDetail() {
         <div className="space-y-1.5">
           <Label>Notes to self</Label>
           <Textarea
-            value={trip.notes}
+            value={draft.notes}
             placeholder="Packing list, flight numbers, whatever…"
             rows={2}
-            onChange={(e) => queueTripPatch(trip.id, { notes: e.target.value })}
+            onChange={(e) => {
+              const v = e.target.value
+              setDraft((d) => ({ ...d, notes: v }))
+              queueTripPatch(trip.id, { notes: v })
+            }}
           />
         </div>
       </header>
