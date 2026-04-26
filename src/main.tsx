@@ -6,6 +6,7 @@ import Home from './routes/Home'
 import TripDetail from './routes/TripDetail'
 import TripExport from './routes/TripExport'
 import TripBudget from './routes/TripBudget'
+import TripPacking from './routes/TripPacking'
 import './index.css'
 
 const router = createHashRouter([
@@ -16,6 +17,7 @@ const router = createHashRouter([
       { index: true, element: <Home /> },
       { path: 'trips/:id', element: <TripDetail /> },
       { path: 'trips/:id/budget', element: <TripBudget /> },
+      { path: 'trips/:id/packing', element: <TripPacking /> },
       { path: 'trips/:id/export', element: <TripExport /> },
     ],
   },

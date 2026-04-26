@@ -32,7 +32,7 @@ import {
 import { groupActivitiesByDay, isValidIso, daysInRange } from '@/lib/dates'
 import { downloadBlob, exportTripToJSON } from '@/lib/export'
 import type { Activity } from '@/lib/types'
-import { ArrowLeft, Printer, FileText, Copy, BookmarkPlus, Wallet } from 'lucide-react'
+import { ArrowLeft, Printer, FileText, Copy, BookmarkPlus, Wallet, Backpack } from 'lucide-react'
 
 export default function TripDetail() {
   const { id } = useParams<{ id: string }>()
@@ -215,6 +215,11 @@ export default function TripDetail() {
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
+            <Link to={`/trips/${trip.id}/packing`}>
+              <Backpack className="h-4 w-4" /> Packing
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link to={`/trips/${trip.id}/export`}>
               <Printer className="h-4 w-4" /> Print / PDF
             </Link>
@@ -235,9 +240,15 @@ export default function TripDetail() {
         <span className="px-3 py-1.5 bg-primary text-primary-foreground">📋 Itinerary</span>
         <Link
           to={`/trips/${trip.id}/budget`}
-          className="px-3 py-1.5 hover:bg-accent"
+          className="px-3 py-1.5 hover:bg-accent border-l"
         >
           💰 Budget
+        </Link>
+        <Link
+          to={`/trips/${trip.id}/packing`}
+          className="px-3 py-1.5 hover:bg-accent border-l"
+        >
+          🎒 Packing
         </Link>
       </div>
 

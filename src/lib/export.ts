@@ -8,10 +8,18 @@ export async function exportTripToJSON(tripId: string): Promise<Blob> {
   if (!trip) throw new Error('Trip not found')
   const activities = await db.activities.where('tripId').equals(tripId).toArray()
   const settlements = await db.settlements.where('tripId').equals(tripId).toArray()
+  const packingItems = await db.packingItems.where('tripId').equals(tripId).toArray()
   const imageIds = activities.map((a) => a.imageId).filter(Boolean) as string[]
   const images = await exportImagesForTrip(imageIds)
 
-  const payload: TripExport = { version: 1, trip, activities, images, settlements }
+  const payload: TripExport = {
+    version: 1,
+    trip,
+    activities,
+    images,
+    settlements,
+    packingItems,
+  }
   return new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
 }
 
@@ -50,29 +58,42 @@ export async function importTripFromJSON(text: string): Promise<ImportResult> {
   const imageIdMap = await importImages(data.images)
   const newTripId = nanoid()
 
-  await db.transaction('rw', db.trips, db.activities, db.settlements, async () => {
-    await db.trips.put({
-      ...data.trip,
-      id: newTripId,
-      name: `${data.trip.name} (Imported)`,
-      archivedAt: null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    const newActivities = data.activities.map((a) => ({
-      ...a,
-      id: nanoid(),
-      tripId: newTripId,
-      imageId: a.imageId ? imageIdMap.get(a.imageId) ?? null : null,
-    }))
-    if (newActivities.length > 0) await db.activities.bulkPut(newActivities)
-    const newSettlements = (data.settlements ?? []).map((s) => ({
-      ...s,
-      id: nanoid(),
-      tripId: newTripId,
-    }))
-    if (newSettlements.length > 0) await db.settlements.bulkPut(newSettlements)
-  })
+  await db.transaction(
+    'rw',
+    db.trips,
+    db.activities,
+    db.settlements,
+    db.packingItems,
+    async () => {
+      await db.trips.put({
+        ...data.trip,
+        id: newTripId,
+        name: `${data.trip.name} (Imported)`,
+        archivedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      const newActivities = data.activities.map((a) => ({
+        ...a,
+        id: nanoid(),
+        tripId: newTripId,
+        imageId: a.imageId ? imageIdMap.get(a.imageId) ?? null : null,
+      }))
+      if (newActivities.length > 0) await db.activities.bulkPut(newActivities)
+      const newSettlements = (data.settlements ?? []).map((s) => ({
+        ...s,
+        id: nanoid(),
+        tripId: newTripId,
+      }))
+      if (newSettlements.length > 0) await db.settlements.bulkPut(newSettlements)
+      const newPacking = (data.packingItems ?? []).map((p) => ({
+        ...p,
+        id: nanoid(),
+        tripId: newTripId,
+      }))
+      if (newPacking.length > 0) await db.packingItems.bulkPut(newPacking)
+    },
+  )
 
   return { ok: true, tripId: newTripId }
 }

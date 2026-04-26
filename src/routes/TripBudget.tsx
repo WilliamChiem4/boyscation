@@ -136,7 +136,15 @@ export default function TripBudget() {
           >
             📋 Itinerary
           </Link>
-          <span className="px-3 py-1.5 bg-primary text-primary-foreground">💰 Budget</span>
+          <span className="px-3 py-1.5 bg-primary text-primary-foreground border-l">
+            💰 Budget
+          </span>
+          <Link
+            to={`/trips/${trip.id}/packing`}
+            className="px-3 py-1.5 hover:bg-accent border-l"
+          >
+            🎒 Packing
+          </Link>
         </div>
       </div>
 

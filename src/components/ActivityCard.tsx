@@ -6,9 +6,10 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { ActivityEditor } from '@/components/ActivityEditor'
 import { ImageLightbox } from '@/components/ImageUpload'
 import { useObjectURL } from '@/hooks/useObjectURL'
-import { Clock, MapPin, ExternalLink, GripVertical, Pencil, ArrowRight } from 'lucide-react'
+import { Clock, MapPin, ExternalLink, GripVertical, Pencil, ArrowRight, Copy } from 'lucide-react'
 import { formatTime } from '@/lib/dates'
 import { CATEGORY_EMOJI, TRANSPORT_EMOJI, TRANSPORT_LABELS, formatMoney } from '@/lib/budget'
+import { duplicateActivity } from '@/lib/autosave'
 import type { Activity } from '@/lib/types'
 
 type Props = {
@@ -150,15 +151,25 @@ export function ActivityCard({ activity, availableDates, travelers, currency }: 
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setEditing(true)}
-          aria-label="Edit activity"
-          className="shrink-0 no-print"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center shrink-0 no-print">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => void duplicateActivity(activity.id)}
+            aria-label="Duplicate activity"
+            title="Duplicate"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setEditing(true)}
+            aria-label="Edit activity"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {editing && (
