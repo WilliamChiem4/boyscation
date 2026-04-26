@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { subscribeAvatar } from '@/lib/avatarBus'
+import { avatarSay, subscribeAvatar } from '@/lib/avatarBus'
+import { pickLuffyQuote } from '@/lib/luffyQuotes'
 
 const SPEECH_DURATION_MS = 4500
 
@@ -45,8 +46,7 @@ export function AnimeAvatar() {
         type="button"
         aria-label="Mascot"
         onClick={() => {
-          if (timerRef.current != null) window.clearTimeout(timerRef.current)
-          setMessage(null)
+          avatarSay(pickLuffyQuote(message))
         }}
         className="pointer-events-auto animate-avatar-bob focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
       >
