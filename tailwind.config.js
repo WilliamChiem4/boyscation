@@ -44,17 +44,26 @@ export default {
           foreground: 'hsl(var(--card-foreground))',
         },
         brand: {
-          cream: '#FFF8EF',
-          sand: '#F4EBDD',
-          charcoal: '#1F2430',
-          ocean: '#3A78B9',
-          palm: '#5E8B63',
-          sunset: '#E58A4E',
+          // One Piece treasure-map palette — keys preserved from original
+          // tropical theme so existing components recolor automatically.
+          cream: '#F1E2B6',     // parchment background
+          sand: '#E5D4A3',      // faded parchment / muted
+          charcoal: '#0F2540',  // navy ink (text)
+          ocean: '#B22B22',     // primary accent (wax-seal red)
+          palm: '#2F7472',      // success/positive (ocean teal)
+          sunset: '#D9A82B',    // warning/highlight (weathered gold)
+          // Theme-named aliases for new components
+          parchment: '#F1E2B6',
+          ink: '#0F2540',
+          wax: '#B22B22',
+          gold: '#D9A82B',
+          teal: '#2F7472',
+          weathered: '#A6783F',
         },
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
-        heading: ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        heading: ['Bangers', 'Bowlby One', 'Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -70,10 +79,20 @@ export default {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        'avatar-bob': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-3px)' },
+        },
+        'bubble-in': {
+          '0%': { opacity: '0', transform: 'translateY(6px) scale(0.95)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'avatar-bob': 'avatar-bob 2.5s ease-in-out infinite',
+        'bubble-in': 'bubble-in 0.18s ease-out',
       },
     },
   },

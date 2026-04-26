@@ -31,6 +31,7 @@ import {
 } from '@/lib/autosave'
 import { groupActivitiesByDay, isValidIso, daysInRange } from '@/lib/dates'
 import { downloadBlob, exportTripToJSON } from '@/lib/export'
+import { avatarSay } from '@/lib/avatarBus'
 import type { Activity } from '@/lib/types'
 import { ArrowLeft, Printer, FileText, Copy, BookmarkPlus, Wallet } from 'lucide-react'
 
@@ -171,6 +172,7 @@ export default function TripDetail() {
     const updates = reordered.map((a, i) => ({ id: a.id, date: targetDate, order: i }))
     await reorderActivities(updates)
     setOptimistic(null)
+    avatarSay('Yosh! Set sail!')
   }
 
   function handleDragCancel() {

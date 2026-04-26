@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTrip } from '@/hooks/useTrip'
 import { useObjectURL } from '@/hooks/useObjectURL'
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/StatusBadge'
 import { groupActivitiesByDay, formatDateRange, formatTime } from '@/lib/dates'
 import { CATEGORY_EMOJI, TRANSPORT_EMOJI, TRANSPORT_LABELS, formatMoney } from '@/lib/budget'
+import { avatarSay } from '@/lib/avatarBus'
 import { ArrowLeft, Printer, Clock, MapPin, ExternalLink, ArrowRight } from 'lucide-react'
 import type { Activity } from '@/lib/types'
 
@@ -26,6 +27,10 @@ export default function TripExport() {
 
   const totalCost = activities.reduce((s, a) => s + (a.cost || 0), 0)
   const currency = trip?.currency || 'USD'
+
+  useEffect(() => {
+    avatarSay('Tell the whole crew! 🗺️')
+  }, [])
 
   if (data === undefined) return <div className="p-8 text-muted-foreground">Loading…</div>
   if (!trip) {

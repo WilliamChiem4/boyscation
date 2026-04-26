@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AnimeAvatar } from '@/components/AnimeAvatar'
 
 export default function App() {
   return (
@@ -7,6 +8,7 @@ export default function App() {
       <ErrorBoundary>
         <Outlet />
       </ErrorBoundary>
+      <AnimeAvatar />
     </div>
   )
 }

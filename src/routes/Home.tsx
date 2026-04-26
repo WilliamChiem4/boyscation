@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTrips } from '@/hooks/useTrips'
 import { NewTripDialog } from '@/components/NewTripDialog'
@@ -21,8 +21,9 @@ import {
   useTemplate,
 } from '@/lib/autosave'
 import { downloadBlob, exportTripToJSON, importTripFromJSON } from '@/lib/export'
+import { avatarSay } from '@/lib/avatarBus'
 import { cn } from '@/lib/utils'
-import { Upload, Palmtree } from 'lucide-react'
+import { Upload, Anchor } from 'lucide-react'
 import type { Trip } from '@/lib/types'
 
 type Tab = 'home' | 'templates' | 'archived'
@@ -58,6 +59,13 @@ export default function Home() {
   const [importErrors, setImportErrors] = useState<string[] | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('home')
+
+  useEffect(() => {
+    if (sessionStorage.getItem('avatar-greeted') !== '1') {
+      sessionStorage.setItem('avatar-greeted', '1')
+      avatarSay("I'm gonna be King of the Pirates! 👒")
+    }
+  }, [])
 
   const buckets = useMemo(() => {
     const home: Trip[] = []
@@ -109,8 +117,8 @@ export default function Home() {
     <div className="container mx-auto max-w-5xl py-8 px-4 md:px-8">
       <header className="flex items-end justify-between gap-4 mb-6 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-palm/15 text-brand-palm">
-            <Palmtree className="h-7 w-7" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-brand-palm/15 text-brand-palm border-2 border-brand-palm/40">
+            <Anchor className="h-7 w-7" />
           </div>
           <div>
             <h1 className="font-heading text-4xl font-extrabold tracking-tight text-brand-charcoal">
@@ -176,9 +184,9 @@ export default function Home() {
       {trips === undefined ? (
         <p className="text-muted-foreground">Loading…</p>
       ) : list.length === 0 ? (
-        <div className="surface rounded-2xl border-dashed py-16 text-center">
+        <div className="surface border-dashed py-16 text-center">
           <div className="text-4xl mb-2" aria-hidden>
-            🌴
+            🏴‍☠️
           </div>
           <p className="text-lg font-heading font-semibold text-brand-charcoal">
             {EMPTY_STATES[tab].title}

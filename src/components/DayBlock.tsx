@@ -4,6 +4,7 @@ import { ActivityCard } from '@/components/ActivityCard'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { addActivity } from '@/lib/autosave'
+import { avatarSay } from '@/lib/avatarBus'
 import type { Activity } from '@/lib/types'
 
 type Props = {
@@ -40,7 +41,10 @@ export function DayBlock({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => addActivity(tripId, date)}
+          onClick={() => {
+            addActivity(tripId, date)
+            avatarSay('Sounds fun! Is there meat?! 🍖')
+          }}
           className="no-print"
         >
           <Plus className="h-4 w-4" /> Add activity

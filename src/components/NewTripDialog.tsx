@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { CrewInput } from '@/components/CrewInput'
 import { createTrip } from '@/lib/autosave'
 import { todayIso, addDaysIso, isValidIso } from '@/lib/dates'
+import { avatarSay } from '@/lib/avatarBus'
 import { Plus } from 'lucide-react'
 
 export function NewTripDialog() {
@@ -55,6 +56,7 @@ export function NewTripDialog() {
     })
     reset()
     setOpen(false)
+    avatarSay("Shishishi! A new adventure! 🏴‍☠️")
     navigate(`/trips/${id}`)
   }
 

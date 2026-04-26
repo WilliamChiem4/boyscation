@@ -4,27 +4,27 @@
 
 @layer base {
   :root {
-    /* Boyscation palette — Warm Cream, Sand, Charcoal, Ocean Blue, Palm Green, Sunset Orange */
-    --background: 34 100% 97%;        /* Warm Cream #FFF8EF */
-    --foreground: 222 22% 15%;        /* Charcoal #1F2430 */
-    --card: 0 0% 100%;
-    --card-foreground: 222 22% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 22% 15%;
-    --primary: 210 52% 48%;           /* Ocean Blue #3A78B9 */
-    --primary-foreground: 34 100% 97%;
-    --secondary: 36 51% 91%;          /* Sand #F4EBDD */
-    --secondary-foreground: 222 22% 15%;
-    --muted: 36 51% 91%;
-    --muted-foreground: 222 14% 38%;
-    --accent: 36 51% 91%;
-    --accent-foreground: 222 22% 15%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 34 100% 97%;
-    --border: 34 32% 85%;
-    --input: 34 32% 85%;
-    --ring: 210 52% 48%;
-    --radius: 0.75rem;
+    /* One Piece Treasure-Map palette — Parchment, Navy Ink, Wax-Seal Red, Gold, Ocean Teal */
+    --background: 42 65% 88%;         /* Aged Parchment #F1E2B6 */
+    --foreground: 215 60% 15%;        /* Navy Ink #0F2540 */
+    --card: 42 70% 93%;               /* Lighter Parchment #F8EFD2 */
+    --card-foreground: 215 60% 15%;
+    --popover: 42 70% 93%;
+    --popover-foreground: 215 60% 15%;
+    --primary: 4 65% 42%;             /* Wax-Seal Red #B22B22 */
+    --primary-foreground: 42 70% 93%;
+    --secondary: 43 70% 50%;          /* Weathered Gold #D9A82B */
+    --secondary-foreground: 215 60% 15%;
+    --muted: 41 50% 80%;              /* Faded Parchment #E5D4A3 */
+    --muted-foreground: 215 30% 32%;
+    --accent: 178 42% 32%;            /* Ocean Teal #2F7472 */
+    --accent-foreground: 42 70% 93%;
+    --destructive: 0 75% 32%;         /* Deep Blood Red #8E1414 */
+    --destructive-foreground: 42 70% 93%;
+    --border: 32 45% 45%;             /* Weathered Brown #A6783F */
+    --input: 32 35% 60%;
+    --ring: 4 65% 42%;
+    --radius: 0.25rem;
   }
 }
 
@@ -33,25 +33,26 @@
     @apply border-border;
   }
   html {
-    background-color: #fff8ef;
+    background-color: #f1e2b6;
   }
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    background-image: url('/brand-pattern.png');
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'><g fill='none' stroke='%23A6783F' stroke-opacity='0.18' stroke-width='1.2' stroke-linecap='round'><path d='M0 30 Q15 22 30 30 T60 30 T90 30 T120 30 T150 30 T180 30'/><path d='M0 60 Q15 52 30 60 T60 60 T90 60 T120 60 T150 60 T180 60'/><path d='M0 110 Q15 102 30 110 T60 110 T90 110 T120 110 T150 110 T180 110'/><path d='M0 150 Q15 142 30 150 T60 150 T90 150 T120 150 T150 150 T180 150'/></g><g fill='%23A6783F' fill-opacity='0.13'><circle cx='90' cy='90' r='2.2'/><circle cx='30' cy='90' r='1.4'/><circle cx='150' cy='90' r='1.4'/><circle cx='60' cy='130' r='1.4'/><circle cx='120' cy='130' r='1.4'/></g><g fill='none' stroke='%23A6783F' stroke-opacity='0.22' stroke-width='1'><path d='M86 86 L94 94 M94 86 L86 94'/></g></svg>");
     background-repeat: repeat;
-    background-size: 900px auto;
+    background-size: 360px auto;
     background-attachment: fixed;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.01em;
+    font-family: 'Bangers', 'Bowlby One', 'Poppins', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.04em;
+    font-weight: 400;
   }
 }
 
 @layer components {
   .surface {
-    @apply bg-card/90 backdrop-blur-sm border rounded-lg shadow-sm;
+    @apply bg-card/95 backdrop-blur-sm border-2 border-border/70 rounded-sm shadow-[2px_2px_0_rgba(15,37,64,0.18)];
   }
 }
 

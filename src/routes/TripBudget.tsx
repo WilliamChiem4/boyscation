@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -31,6 +31,7 @@ import {
   minimizeTransfers,
 } from '@/lib/settlement'
 import { formatDayHeader } from '@/lib/dates'
+import { avatarSay } from '@/lib/avatarBus'
 import type { ActivityCategory } from '@/lib/types'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 
@@ -44,6 +45,9 @@ export default function TripBudget() {
 
   const currency = trip?.currency || 'USD'
   const [showIn, setShowIn] = useState<string>(SHOW_IN_NONE)
+  useEffect(() => {
+    avatarSay("Money? Nami handles that. Can we buy meat?")
+  }, [])
   const secondary = showIn !== SHOW_IN_NONE && canConvert(currency, showIn) ? showIn : null
 
   const renderMoney = (amount: number) => {
