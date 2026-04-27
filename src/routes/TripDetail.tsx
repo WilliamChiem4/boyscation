@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   DndContext,
@@ -15,25 +15,23 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { DayBlock } from '@/components/DayBlock'
 import { UnscheduledBin, UNSCHEDULED_ID } from '@/components/UnscheduledBin'
 import { ActivityCard } from '@/components/ActivityCard'
+import { EditTripDialog } from '@/components/EditTripDialog'
 import { useTrip } from '@/hooks/useTrip'
 import {
-  queueTripPatch,
   duplicateTrip,
   reorderActivities,
   flush,
 } from '@/lib/autosave'
-import { groupActivitiesByDay, isValidIso, daysInRange } from '@/lib/dates'
+import { groupActivitiesByDay, daysInRange, formatDateRange } from '@/lib/dates'
 import { downloadBlob, exportTripToJSON } from '@/lib/export'
 import { avatarSay } from '@/lib/avatarBus'
 import type { Activity } from '@/lib/types'
-import { ArrowLeft, Printer, FileText, Copy, BookmarkPlus, Wallet } from 'lucide-react'
+import { ArrowLeft, Printer, FileText, Copy, BookmarkPlus, Wallet, Pencil } from 'lucide-react'
 
 export default function TripDetail() {
   const { id } = useParams<{ id: string }>()
@@ -45,23 +43,7 @@ export default function TripDetail() {
 
   const [optimistic, setOptimistic] = useState<Activity[] | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
-
-  const [draft, setDraft] = useState({
-    name: '',
-    destination: '',
-    travelers: '',
-    notes: '',
-  })
-
-  useEffect(() => {
-    if (!trip) return
-    setDraft({
-      name: trip.name,
-      destination: trip.destination,
-      travelers: trip.travelers.join(', '),
-      notes: trip.notes,
-    })
-  }, [trip?.id])
+  const [editOpen, setEditOpen] = useState(false)
 
   const activities = optimistic ?? activitiesFromDb
 
@@ -197,11 +179,6 @@ export default function TripDetail() {
     setOptimistic(null)
   }
 
-  async function handleDateChange(field: 'startDate' | 'endDate', value: string) {
-    if (!isValidIso(value)) return
-    queueTripPatch(trip!.id, { [field]: value } as Parameters<typeof queueTripPatch>[1], true)
-  }
-
   async function handleExportJSON() {
     const blob = await exportTripToJSON(trip!.id)
     downloadBlob(blob, `${trip!.name.replace(/\s+/g, '-').toLowerCase() || 'trip'}.json`)
@@ -228,6 +205,9 @@ export default function TripDetail() {
           </Link>
         </Button>
         <div className="flex items-center gap-1 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4" /> Edit
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to={`/trips/${trip.id}/budget`}>
               <Wallet className="h-4 w-4" /> Budget
@@ -264,77 +244,34 @@ export default function TripDetail() {
         {trip.isTemplate && (
           <Badge variant="muted" className="no-print">Template</Badge>
         )}
-        <Input
-          className="font-heading text-3xl md:text-4xl font-extrabold h-auto py-2 border-transparent hover:border-input focus:border-input bg-transparent"
-          value={draft.name}
-          placeholder="Name this boyscation"
-          onChange={(e) => {
-            const v = e.target.value
-            setDraft((d) => ({ ...d, name: v }))
-            queueTripPatch(trip.id, { name: v })
-          }}
-        />
+        <h1 className="font-heading text-3xl md:text-4xl font-extrabold py-2">
+          {trip.name || 'Untitled boyscation'}
+        </h1>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Destination</Label>
-            <Input
-              value={draft.destination}
-              placeholder="Where we headed?"
-              onChange={(e) => {
-                const v = e.target.value
-                setDraft((d) => ({ ...d, destination: v }))
-                queueTripPatch(trip.id, { destination: v })
-              }}
-            />
+            <p className="text-base">{trip.destination || '—'}</p>
           </div>
           <div className="space-y-1.5">
-            <Label>The crew (comma-separated)</Label>
-            <Input
-              value={draft.travelers}
-              placeholder="Alex, Sam"
-              onChange={(e) => {
-                const v = e.target.value
-                setDraft((d) => ({ ...d, travelers: v }))
-                queueTripPatch(trip.id, {
-                  travelers: v
-                    .split(',')
-                    .map((t) => t.trim())
-                    .filter(Boolean),
-                })
-              }}
-            />
+            <Label>The crew</Label>
+            <p className="text-base">
+              {trip.travelers.length > 0 ? trip.travelers.join(', ') : '—'}
+            </p>
           </div>
-          <div className="space-y-1.5">
-            <Label>Start date</Label>
-            <Input
-              type="date"
-              value={trip.startDate}
-              onChange={(e) => handleDateChange('startDate', e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>End date</Label>
-            <Input
-              type="date"
-              value={trip.endDate}
-              onChange={(e) => handleDateChange('endDate', e.target.value)}
-            />
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Dates</Label>
+            <p className="text-base">{formatDateRange(trip.startDate, trip.endDate)}</p>
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label>Notes to self</Label>
-          <Textarea
-            value={draft.notes}
-            placeholder="Packing list, flight numbers, whatever…"
-            rows={2}
-            onChange={(e) => {
-              const v = e.target.value
-              setDraft((d) => ({ ...d, notes: v }))
-              queueTripPatch(trip.id, { notes: v })
-            }}
-          />
-        </div>
+        {trip.notes && (
+          <div className="space-y-1.5">
+            <Label>Notes to self</Label>
+            <p className="text-base whitespace-pre-wrap">{trip.notes}</p>
+          </div>
+        )}
       </header>
+
+      <EditTripDialog trip={trip} open={editOpen} onOpenChange={setEditOpen} />
 
       <DndContext
         sensors={sensors}
