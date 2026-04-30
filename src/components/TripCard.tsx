@@ -14,6 +14,8 @@ import {
   MapPin,
   Trash2,
   Users,
+  Share2,
+  Link as LinkIcon,
 } from 'lucide-react'
 import { formatDateRange } from '@/lib/dates'
 import type { Trip } from '@/lib/types'
@@ -30,6 +32,7 @@ type Props = {
   onUnarchive?: (id: string) => void
   onSetTemplate?: (id: string, isTemplate: boolean) => void
   onUseTemplate?: (id: string) => void
+  onShare?: (id: string) => void
 }
 
 export function TripCard({
@@ -42,7 +45,9 @@ export function TripCard({
   onUnarchive,
   onSetTemplate,
   onUseTemplate,
+  onShare,
 }: Props) {
+  const synced = trip.syncedRole != null
   return (
     <Card className="surface hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -56,6 +61,12 @@ export function TripCard({
             <div className="flex flex-wrap gap-1">
               {variant === 'template' && <Badge variant="muted">Template</Badge>}
               {variant === 'archived' && <Badge variant="muted">Archived</Badge>}
+              {synced && (
+                <Badge variant="muted" className="gap-1">
+                  <LinkIcon className="h-3 w-3" />
+                  {trip.syncedRole === 'admin' ? 'Synced' : `Synced · ${trip.syncedRole}`}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -108,6 +119,11 @@ export function TripCard({
               title="Save as template"
             >
               <BookmarkPlus className="h-4 w-4" />
+            </Button>
+          )}
+          {variant === 'home' && onShare && (trip.syncedRole === null || trip.syncedRole === 'admin') && (
+            <Button size="sm" variant="ghost" onClick={() => onShare(trip.id)} title={synced ? 'Share link' : 'Share & sync'}>
+              <Share2 className="h-4 w-4" />
             </Button>
           )}
           {variant === 'home' && onArchive && (

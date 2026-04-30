@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Activity, PackingItem, Settlement, StoredImage, Trip } from './types'
+import type { Activity, Idea, PackingItem, Settlement, StoredImage, Trip } from './types'
 
 class TripPlannerDB extends Dexie {
   trips!: Table<Trip, string>
@@ -7,6 +7,7 @@ class TripPlannerDB extends Dexie {
   images!: Table<StoredImage, string>
   settlements!: Table<Settlement, string>
   packingItems!: Table<PackingItem, string>
+  ideas!: Table<Idea, string>
 
   constructor() {
     super('trip-planner')
@@ -85,6 +86,45 @@ class TripPlannerDB extends Dexie {
       settlements: 'id, tripId, createdAt',
       packingItems: 'id, tripId, [tripId+order]',
     })
+    this.version(6)
+      .stores({
+        trips: 'id, updatedAt, isTemplate, archivedAt, syncedRole',
+        activities: 'id, tripId, [tripId+date], [tripId+date+order], updatedAt',
+        images: 'id',
+        settlements: 'id, tripId, createdAt',
+        packingItems: 'id, tripId, [tripId+order]',
+        ideas: 'id, tripId, status, [tripId+status], createdAt',
+      })
+      .upgrade(async (tx) => {
+        const trips = (await tx.table('trips').toArray()) as Trip[]
+        const tripUpdatedAt = new Map(trips.map((t) => [t.id, t.updatedAt]))
+        await tx
+          .table('trips')
+          .toCollection()
+          .modify((t: Partial<Trip>) => {
+            if (t.syncedRole === undefined) t.syncedRole = null
+            if (t.syncToken === undefined) t.syncToken = null
+            if (t.lastSyncedAt === undefined) t.lastSyncedAt = null
+            if (t.lastEditedBy === undefined) t.lastEditedBy = null
+          })
+        await tx
+          .table('activities')
+          .toCollection()
+          .modify((a: Partial<Activity>) => {
+            if (a.updatedAt === undefined || a.updatedAt === 0) {
+              a.updatedAt = tripUpdatedAt.get(a.tripId ?? '') ?? Date.now()
+            }
+            if (a.deletedAt === undefined) a.deletedAt = null
+            if (a.lastEditedBy === undefined) a.lastEditedBy = null
+          })
+        await tx
+          .table('settlements')
+          .toCollection()
+          .modify((s: Partial<Settlement>) => {
+            if (s.deletedAt === undefined) s.deletedAt = null
+            if (s.lastEditedBy === undefined) s.lastEditedBy = null
+          })
+      })
   }
 }
 

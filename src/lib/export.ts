@@ -72,18 +72,27 @@ export async function importTripFromJSON(text: string): Promise<ImportResult> {
         archivedAt: null,
         createdAt: now,
         updatedAt: now,
+        syncedRole: null,
+        syncToken: null,
+        lastSyncedAt: null,
+        lastEditedBy: null,
       })
       const newActivities = data.activities.map((a) => ({
         ...a,
         id: nanoid(),
         tripId: newTripId,
         imageId: a.imageId ? imageIdMap.get(a.imageId) ?? null : null,
+        updatedAt: now,
+        deletedAt: null,
+        lastEditedBy: null,
       }))
       if (newActivities.length > 0) await db.activities.bulkPut(newActivities)
       const newSettlements = (data.settlements ?? []).map((s) => ({
         ...s,
         id: nanoid(),
         tripId: newTripId,
+        deletedAt: null,
+        lastEditedBy: null,
       }))
       if (newSettlements.length > 0) await db.settlements.bulkPut(newSettlements)
       const newPacking = (data.packingItems ?? []).map((p) => ({

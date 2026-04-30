@@ -25,6 +25,7 @@ import { avatarSay } from '@/lib/avatarBus'
 import { cn } from '@/lib/utils'
 import { Upload, Anchor } from 'lucide-react'
 import type { Trip } from '@/lib/types'
+import { ShareDialog } from '@/components/ShareDialog'
 
 type Tab = 'home' | 'templates' | 'archived'
 
@@ -58,7 +59,9 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importErrors, setImportErrors] = useState<string[] | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [shareTripId, setShareTripId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('home')
+  const shareTrip = shareTripId ? trips?.find((t) => t.id === shareTripId) : null
 
   useEffect(() => {
     if (sessionStorage.getItem('avatar-greeted') !== '1') {
@@ -208,6 +211,7 @@ export default function Home() {
               onUnarchive={(id) => unarchiveTrip(id)}
               onSetTemplate={(id, v) => setTripTemplate(id, v)}
               onUseTemplate={handleUseTemplate}
+              onShare={setShareTripId}
             />
           ))}
         </div>
@@ -231,6 +235,14 @@ export default function Home() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {shareTrip && (
+        <ShareDialog
+          trip={shareTrip}
+          open={shareTripId !== null}
+          onOpenChange={(v) => !v && setShareTripId(null)}
+        />
+      )}
 
       <Dialog open={importErrors !== null} onOpenChange={(v) => !v && setImportErrors(null)}>
         <DialogContent>

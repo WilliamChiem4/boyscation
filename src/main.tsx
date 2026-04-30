@@ -7,6 +7,7 @@ import TripDetail from './routes/TripDetail'
 import TripExport from './routes/TripExport'
 import TripBudget from './routes/TripBudget'
 import TripPacking from './routes/TripPacking'
+import SharedTrip from './routes/SharedTrip'
 import './index.css'
 
 const router = createHashRouter([
@@ -19,6 +20,7 @@ const router = createHashRouter([
       { path: 'trips/:id/budget', element: <TripBudget /> },
       { path: 'trips/:id/packing', element: <TripPacking /> },
       { path: 'trips/:id/export', element: <TripExport /> },
+      { path: 's/:token', element: <SharedTrip /> },
     ],
   },
 ])

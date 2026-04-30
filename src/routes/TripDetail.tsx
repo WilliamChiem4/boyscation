@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   DndContext,
@@ -31,7 +31,23 @@ import { groupActivitiesByDay, daysInRange, formatDateRange } from '@/lib/dates'
 import { downloadBlob, exportTripToJSON } from '@/lib/export'
 import { avatarSay } from '@/lib/avatarBus'
 import type { Activity } from '@/lib/types'
-import { ArrowLeft, Printer, FileText, Copy, BookmarkPlus, Wallet, Pencil, Backpack } from 'lucide-react'
+import {
+  ArrowLeft,
+  Printer,
+  FileText,
+  Copy,
+  BookmarkPlus,
+  Wallet,
+  Pencil,
+  Backpack,
+  Share2,
+  Eye,
+  PenSquare,
+} from 'lucide-react'
+import { getSyncContext } from '@/hooks/useSyncContext'
+import { ShareDialog } from '@/components/ShareDialog'
+import { IdeasPanel } from '@/components/IdeasPanel'
+import { setAccessToken } from '@/lib/supabase'
 
 export default function TripDetail() {
   const { id } = useParams<{ id: string }>()
@@ -44,6 +60,13 @@ export default function TripDetail() {
   const [optimistic, setOptimistic] = useState<Activity[] | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+
+  const ctx = getSyncContext(trip)
+
+  useEffect(() => {
+    if (ctx.token) setAccessToken(ctx.token)
+  }, [ctx.token])
 
   const activities = optimistic ?? activitiesFromDb
 
@@ -226,12 +249,21 @@ export default function TripDetail() {
           <Button variant="outline" size="sm" onClick={handleExportJSON}>
             <FileText className="h-4 w-4" /> Export JSON
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleDuplicate}>
-            <Copy className="h-4 w-4" /> Duplicate
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleSaveAsTemplate}>
-            <BookmarkPlus className="h-4 w-4" /> Save as template
-          </Button>
+          {ctx.canManage && (
+            <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+              <Share2 className="h-4 w-4" /> {ctx.isSynced ? 'Share link' : 'Share & sync'}
+            </Button>
+          )}
+          {ctx.canEdit && (
+            <>
+              <Button variant="ghost" size="sm" onClick={handleDuplicate}>
+                <Copy className="h-4 w-4" /> Duplicate
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleSaveAsTemplate}>
+                <BookmarkPlus className="h-4 w-4" /> Save as template
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -251,7 +283,22 @@ export default function TripDetail() {
         </Link>
       </div>
 
-      <header className="space-y-4 mb-8">
+      {ctx.isSynced && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm no-print">
+          {ctx.role === 'viewer' && <Eye className="h-4 w-4" />}
+          {ctx.role === 'editor' && <PenSquare className="h-4 w-4" />}
+          {ctx.role === 'admin' && <Share2 className="h-4 w-4" />}
+          <span>
+            You're viewing as <strong>{ctx.role}</strong>
+            {ctx.guestName && <> — signed in as {ctx.guestName}</>}.
+          </span>
+          {ctx.role === 'viewer' && (
+            <span className="text-muted-foreground ml-auto">Read-only. Submit ideas below.</span>
+          )}
+        </div>
+      )}
+
+      <fieldset disabled={!ctx.canEdit} className="contents"><header className="space-y-4 mb-8">
         {trip.isTemplate && (
           <Badge variant="muted" className="no-print">Template</Badge>
         )}
@@ -336,6 +383,17 @@ export default function TripDetail() {
       </DndContext>
 
       <TripSummary activities={activities} />
+      </fieldset>
+
+      {ctx.isSynced && (
+        <div className="mt-8">
+          <IdeasPanel trip={trip} ctx={ctx} />
+        </div>
+      )}
+
+      {ctx.canManage && (
+        <ShareDialog trip={trip} open={shareOpen} onOpenChange={setShareOpen} />
+      )}
     </div>
   )
 }

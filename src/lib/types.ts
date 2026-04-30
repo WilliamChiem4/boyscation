@@ -12,6 +12,12 @@ export type TransportMode = z.infer<typeof TransportMode>
 export const SplitMode = z.enum(['equal', 'except-payer', 'custom'])
 export type SplitMode = z.infer<typeof SplitMode>
 
+export const SyncRole = z.enum(['admin', 'editor', 'viewer'])
+export type SyncRole = z.infer<typeof SyncRole>
+
+export const IdeaStatus = z.enum(['pending', 'accepted', 'rejected'])
+export type IdeaStatus = z.infer<typeof IdeaStatus>
+
 export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const isoDate = z.string().regex(ISO_DATE, 'Expected yyyy-MM-dd')
 
@@ -28,6 +34,11 @@ export const TripSchema = z.object({
   currency: z.string().default('USD'),
   createdAt: z.number(),
   updatedAt: z.number(),
+  // Sync fields (null when trip is local-only)
+  syncedRole: SyncRole.nullable().default(null),
+  syncToken: z.string().nullable().default(null),
+  lastSyncedAt: z.number().nullable().default(null),
+  lastEditedBy: z.string().nullable().default(null),
 })
 export type Trip = z.infer<typeof TripSchema>
 
@@ -54,6 +65,9 @@ export const ActivitySchema = z.object({
   arriveTime: z.string().default(''),
   arriveLocation: z.string().default(''),
   confirmationCode: z.string().default(''),
+  updatedAt: z.number().default(0),
+  deletedAt: z.number().nullable().default(null),
+  lastEditedBy: z.string().nullable().default(null),
 })
 export type Activity = z.infer<typeof ActivitySchema>
 
@@ -61,6 +75,7 @@ export type StoredImage = {
   id: string
   blob: Blob
   mimeType: string
+  remoteKey?: string | null
 }
 
 export const TripExportImageSchema = z.object({
@@ -78,6 +93,8 @@ export const SettlementSchema = z.object({
   amount: z.number(),
   note: z.string().default(''),
   createdAt: z.number(),
+  deletedAt: z.number().nullable().default(null),
+  lastEditedBy: z.string().nullable().default(null),
 })
 export type Settlement = z.infer<typeof SettlementSchema>
 
@@ -92,6 +109,19 @@ export const PackingItemSchema = z.object({
   createdAt: z.number(),
 })
 export type PackingItem = z.infer<typeof PackingItemSchema>
+
+export const IdeaSchema = z.object({
+  id: z.string().min(1),
+  tripId: z.string().min(1),
+  authorName: z.string(),
+  title: z.string(),
+  notes: z.string().default(''),
+  suggestedDate: z.string().nullable().default(null),
+  status: IdeaStatus.default('pending'),
+  activityId: z.string().nullable().default(null),
+  createdAt: z.number(),
+})
+export type Idea = z.infer<typeof IdeaSchema>
 
 export const TripExportSchema = z.object({
   version: z.literal(1),

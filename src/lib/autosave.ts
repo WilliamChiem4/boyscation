@@ -3,6 +3,15 @@ import { db } from './db'
 import type { Activity, PackingItem, Settlement, Trip } from './types'
 import { todayIso } from './dates'
 import { deleteImage } from './images'
+import { getGuestName } from './guestName'
+import {
+  pushActivityDelete,
+  pushActivityUpsert,
+  pushSettlementDelete,
+  pushSettlementUpsert,
+  pushTripDelete,
+  pushTripPatch,
+} from './sync'
 
 type PendingTripPatch = { kind: 'trip'; id: string; patch: Partial<Trip> }
 type PendingActivityPatch = { kind: 'activity'; id: string; patch: Partial<Activity> }
@@ -22,6 +31,65 @@ function scheduleFlush(): void {
   }, TEXT_DEBOUNCE_MS)
 }
 
+// Best-effort remote sync: never blocks the user; logs errors.
+function syncWarn(e: unknown): void {
+  console.warn('[sync] remote push failed:', e)
+}
+
+async function remotePushTripPatch(trip: Trip, patch: Partial<Trip>): Promise<void> {
+  if (!trip.syncToken || !trip.syncedRole) return
+  if (trip.syncedRole === 'viewer') return
+  try {
+    await pushTripPatch(trip.id, patch, trip.syncToken, getGuestName(trip.id))
+  } catch (e) {
+    syncWarn(e)
+  }
+}
+
+async function remotePushActivityUpsert(activity: Activity): Promise<void> {
+  const trip = await db.trips.get(activity.tripId)
+  if (!trip || !trip.syncToken || !trip.syncedRole) return
+  if (trip.syncedRole === 'viewer') return
+  try {
+    await pushActivityUpsert(activity, trip.syncToken, getGuestName(trip.id))
+  } catch (e) {
+    syncWarn(e)
+  }
+}
+
+async function remotePushActivityDelete(tripId: string, activityId: string): Promise<void> {
+  const trip = await db.trips.get(tripId)
+  if (!trip || !trip.syncToken || !trip.syncedRole) return
+  if (trip.syncedRole === 'viewer') return
+  try {
+    await pushActivityDelete(activityId, trip.syncToken, getGuestName(trip.id))
+  } catch (e) {
+    syncWarn(e)
+  }
+}
+
+async function remotePushSettlementUpsert(settlement: Settlement): Promise<void> {
+  const trip = await db.trips.get(settlement.tripId)
+  if (!trip || !trip.syncToken || !trip.syncedRole) return
+  if (trip.syncedRole === 'viewer') return
+  try {
+    await pushSettlementUpsert(settlement, trip.syncToken, getGuestName(trip.id))
+  } catch (e) {
+    syncWarn(e)
+  }
+}
+
+async function remotePushSettlementDelete(tripId: string, settlementId: string): Promise<void> {
+  const trip = await db.trips.get(tripId)
+  if (!trip || !trip.syncToken || !trip.syncedRole) return
+  if (trip.syncedRole === 'viewer') return
+  try {
+    await pushSettlementDelete(settlementId, trip.syncToken, getGuestName(trip.id))
+  } catch (e) {
+    syncWarn(e)
+  }
+}
+
 export async function flush(): Promise<void> {
   if (flushTimer) {
     clearTimeout(flushTimer)
@@ -37,7 +105,7 @@ export async function flush(): Promise<void> {
       if (item.kind === 'trip') {
         await db.trips.update(item.id, { ...item.patch, updatedAt: now })
       } else if (item.kind === 'activity') {
-        await db.activities.update(item.id, item.patch)
+        await db.activities.update(item.id, { ...item.patch, updatedAt: now })
         if ('tripId' in item.patch || 'date' in item.patch) {
           const a = await db.activities.get(item.id)
           if (a) await db.trips.update(a.tripId, { updatedAt: now })
@@ -49,6 +117,17 @@ export async function flush(): Promise<void> {
       }
     }
   })
+
+  // Remote push (fire-and-forget, outside the Dexie tx). Packing items are not synced.
+  for (const item of snapshot) {
+    if (item.kind === 'trip') {
+      const trip = await db.trips.get(item.id)
+      if (trip) void remotePushTripPatch(trip, { ...item.patch, updatedAt: now })
+    } else if (item.kind === 'activity') {
+      const activity = await db.activities.get(item.id)
+      if (activity) void remotePushActivityUpsert(activity)
+    }
+  }
 }
 
 export function queueTripPatch(id: string, patch: Partial<Trip>, immediate = false): void {
@@ -110,15 +189,20 @@ export async function createTrip(input: {
     currency: 'USD',
     createdAt: now,
     updatedAt: now,
+    syncedRole: null,
+    syncToken: null,
+    lastSyncedAt: null,
+    lastEditedBy: null,
   }
   await db.trips.put(trip)
   return trip.id
 }
 
 export async function deleteTrip(id: string): Promise<void> {
+  const trip = await db.trips.get(id)
   await db.transaction(
     'rw',
-    [db.trips, db.activities, db.images, db.settlements, db.packingItems],
+    [db.trips, db.activities, db.images, db.settlements, db.packingItems, db.ideas],
     async () => {
       const activities = await db.activities.where('tripId').equals(id).toArray()
       const imageIds = activities.map((a) => a.imageId).filter(Boolean) as string[]
@@ -126,9 +210,17 @@ export async function deleteTrip(id: string): Promise<void> {
       await db.activities.where('tripId').equals(id).delete()
       await db.settlements.where('tripId').equals(id).delete()
       await db.packingItems.where('tripId').equals(id).delete()
+      await db.ideas.where('tripId').equals(id).delete()
       await db.trips.delete(id)
     },
   )
+  if (trip?.syncedRole === 'admin' && trip.syncToken) {
+    try {
+      await pushTripDelete(id, trip.syncToken)
+    } catch (e) {
+      syncWarn(e)
+    }
+  }
 }
 
 export function archiveTrip(id: string): void {
@@ -160,11 +252,22 @@ export async function useTemplate(id: string): Promise<string> {
     archivedAt: null,
     createdAt: now,
     updatedAt: now,
+    syncedRole: null,
+    syncToken: null,
+    lastSyncedAt: null,
+    lastEditedBy: null,
   }
   await db.trips.put(copy)
 
   if (activities.length > 0) {
-    const cloned: Activity[] = activities.map((a) => ({ ...a, id: nanoid(), tripId: newId }))
+    const cloned: Activity[] = activities.map((a) => ({
+      ...a,
+      id: nanoid(),
+      tripId: newId,
+      updatedAt: now,
+      deletedAt: null,
+      lastEditedBy: null,
+    }))
     await db.activities.bulkPut(cloned)
   }
   if (packingItems.length > 0) {
@@ -192,9 +295,12 @@ export async function addSettlement(
     amount: input.amount,
     note: input.note ?? '',
     createdAt: Date.now(),
+    deletedAt: null,
+    lastEditedBy: null,
   }
   await db.settlements.put(settlement)
   await db.trips.update(tripId, { updatedAt: Date.now() })
+  void remotePushSettlementUpsert(settlement)
   return settlement.id
 }
 
@@ -203,6 +309,7 @@ export async function deleteSettlement(id: string): Promise<void> {
   if (!s) return
   await db.settlements.delete(id)
   await db.trips.update(s.tripId, { updatedAt: Date.now() })
+  void remotePushSettlementDelete(s.tripId, id)
 }
 
 export async function duplicateTrip(id: string, opts?: { asTemplate?: boolean }): Promise<string> {
@@ -221,11 +328,22 @@ export async function duplicateTrip(id: string, opts?: { asTemplate?: boolean })
     archivedAt: null,
     createdAt: now,
     updatedAt: now,
+    syncedRole: null,
+    syncToken: null,
+    lastSyncedAt: null,
+    lastEditedBy: null,
   }
   await db.trips.put(copy)
 
   if (activities.length > 0) {
-    const cloned: Activity[] = activities.map((a) => ({ ...a, id: nanoid(), tripId: newId }))
+    const cloned: Activity[] = activities.map((a) => ({
+      ...a,
+      id: nanoid(),
+      tripId: newId,
+      updatedAt: now,
+      deletedAt: null,
+      lastEditedBy: null,
+    }))
     await db.activities.bulkPut(cloned)
   }
   if (packingItems.length > 0) {
@@ -251,6 +369,7 @@ export async function addActivity(
     .equals([tripId, date])
     .toArray()
   const maxOrder = existing.reduce((m, a) => Math.max(m, a.order), -1)
+  const now = Date.now()
   const activity: Activity = {
     id: nanoid(),
     tripId,
@@ -274,10 +393,14 @@ export async function addActivity(
     arriveTime: '',
     arriveLocation: '',
     confirmationCode: '',
+    updatedAt: now,
+    deletedAt: null,
+    lastEditedBy: null,
     ...partial,
   }
   await db.activities.put(activity)
-  await db.trips.update(tripId, { updatedAt: Date.now() })
+  await db.trips.update(tripId, { updatedAt: now })
+  void remotePushActivityUpsert(activity)
   return activity.id
 }
 
@@ -287,29 +410,37 @@ export async function deleteActivity(id: string): Promise<void> {
   if (a.imageId) await deleteImage(a.imageId)
   await db.activities.delete(id)
   await db.trips.update(a.tripId, { updatedAt: Date.now() })
+  void remotePushActivityDelete(a.tripId, id)
 }
 
 export async function reorderActivities(updates: Array<{ id: string; date: string; order: number }>): Promise<void> {
   if (updates.length === 0) return
+  const now = Date.now()
+  const touched: Activity[] = []
   await db.transaction('rw', db.activities, db.trips, async () => {
     const tripIds = new Set<string>()
     for (const u of updates) {
       const existing = await db.activities.get(u.id)
       if (!existing) continue
       tripIds.add(existing.tripId)
-      await db.activities.update(u.id, { date: u.date, order: u.order })
+      await db.activities.update(u.id, { date: u.date, order: u.order, updatedAt: now })
+      const updated = await db.activities.get(u.id)
+      if (updated) touched.push(updated)
     }
-    const now = Date.now()
     for (const tid of tripIds) await db.trips.update(tid, { updatedAt: now })
   })
+  for (const a of touched) void remotePushActivityUpsert(a)
 }
 
 export async function setActivityImage(activityId: string, imageId: string | null): Promise<void> {
   const a = await db.activities.get(activityId)
   if (!a) return
   if (a.imageId && a.imageId !== imageId) await deleteImage(a.imageId)
-  await db.activities.update(activityId, { imageId })
-  await db.trips.update(a.tripId, { updatedAt: Date.now() })
+  const now = Date.now()
+  await db.activities.update(activityId, { imageId, updatedAt: now })
+  await db.trips.update(a.tripId, { updatedAt: now })
+  const updated = await db.activities.get(activityId)
+  if (updated) void remotePushActivityUpsert(updated)
 }
 
 export async function duplicateActivity(id: string): Promise<string | null> {
