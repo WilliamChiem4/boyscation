@@ -1,12 +1,13 @@
 import { nanoid } from 'nanoid'
 import { db } from './db'
-import type { Activity, Settlement, Trip } from './types'
+import type { Activity, PackingItem, Settlement, Trip } from './types'
 import { todayIso } from './dates'
 import { deleteImage } from './images'
 
 type PendingTripPatch = { kind: 'trip'; id: string; patch: Partial<Trip> }
 type PendingActivityPatch = { kind: 'activity'; id: string; patch: Partial<Activity> }
-type Pending = PendingTripPatch | PendingActivityPatch
+type PendingPackingPatch = { kind: 'packing'; id: string; patch: Partial<PackingItem> }
+type Pending = PendingTripPatch | PendingActivityPatch | PendingPackingPatch
 
 const TEXT_DEBOUNCE_MS = 400
 
@@ -31,16 +32,20 @@ export async function flush(): Promise<void> {
   pending.clear()
   const now = Date.now()
 
-  await db.transaction('rw', db.trips, db.activities, async () => {
+  await db.transaction('rw', db.trips, db.activities, db.packingItems, async () => {
     for (const item of snapshot) {
       if (item.kind === 'trip') {
         await db.trips.update(item.id, { ...item.patch, updatedAt: now })
-      } else {
+      } else if (item.kind === 'activity') {
         await db.activities.update(item.id, item.patch)
         if ('tripId' in item.patch || 'date' in item.patch) {
           const a = await db.activities.get(item.id)
           if (a) await db.trips.update(a.tripId, { updatedAt: now })
         }
+      } else {
+        await db.packingItems.update(item.id, item.patch)
+        const p = await db.packingItems.get(item.id)
+        if (p) await db.trips.update(p.tripId, { updatedAt: now })
       }
     }
   })
@@ -66,6 +71,18 @@ export function queueActivityPatch(id: string, patch: Partial<Activity>, immedia
     patch: existing && existing.kind === 'activity' ? { ...existing.patch, ...patch } : patch,
   }
   pending.set(`activity:${id}`, merged)
+  if (immediate) void flush()
+  else scheduleFlush()
+}
+
+export function queuePackingPatch(id: string, patch: Partial<PackingItem>, immediate = false): void {
+  const existing = pending.get(`packing:${id}`)
+  const merged: PendingPackingPatch = {
+    kind: 'packing',
+    id,
+    patch: existing && existing.kind === 'packing' ? { ...existing.patch, ...patch } : patch,
+  }
+  pending.set(`packing:${id}`, merged)
   if (immediate) void flush()
   else scheduleFlush()
 }
@@ -99,14 +116,19 @@ export async function createTrip(input: {
 }
 
 export async function deleteTrip(id: string): Promise<void> {
-  await db.transaction('rw', db.trips, db.activities, db.images, db.settlements, async () => {
-    const activities = await db.activities.where('tripId').equals(id).toArray()
-    const imageIds = activities.map((a) => a.imageId).filter(Boolean) as string[]
-    for (const imgId of imageIds) await deleteImage(imgId)
-    await db.activities.where('tripId').equals(id).delete()
-    await db.settlements.where('tripId').equals(id).delete()
-    await db.trips.delete(id)
-  })
+  await db.transaction(
+    'rw',
+    [db.trips, db.activities, db.images, db.settlements, db.packingItems],
+    async () => {
+      const activities = await db.activities.where('tripId').equals(id).toArray()
+      const imageIds = activities.map((a) => a.imageId).filter(Boolean) as string[]
+      for (const imgId of imageIds) await deleteImage(imgId)
+      await db.activities.where('tripId').equals(id).delete()
+      await db.settlements.where('tripId').equals(id).delete()
+      await db.packingItems.where('tripId').equals(id).delete()
+      await db.trips.delete(id)
+    },
+  )
 }
 
 export function archiveTrip(id: string): void {
@@ -125,6 +147,7 @@ export async function useTemplate(id: string): Promise<string> {
   const original = await db.trips.get(id)
   if (!original) throw new Error('Template not found')
   const activities = await db.activities.where('tripId').equals(id).toArray()
+  const packingItems = await db.packingItems.where('tripId').equals(id).toArray()
 
   const now = Date.now()
   const newId = nanoid()
@@ -143,6 +166,16 @@ export async function useTemplate(id: string): Promise<string> {
   if (activities.length > 0) {
     const cloned: Activity[] = activities.map((a) => ({ ...a, id: nanoid(), tripId: newId }))
     await db.activities.bulkPut(cloned)
+  }
+  if (packingItems.length > 0) {
+    const clonedPacking: PackingItem[] = packingItems.map((p) => ({
+      ...p,
+      id: nanoid(),
+      tripId: newId,
+      checked: false,
+      createdAt: now,
+    }))
+    await db.packingItems.bulkPut(clonedPacking)
   }
   return newId
 }
@@ -176,6 +209,7 @@ export async function duplicateTrip(id: string, opts?: { asTemplate?: boolean })
   const original = await db.trips.get(id)
   if (!original) throw new Error('Trip not found')
   const activities = await db.activities.where('tripId').equals(id).toArray()
+  const packingItems = await db.packingItems.where('tripId').equals(id).toArray()
 
   const now = Date.now()
   const newId = nanoid()
@@ -193,6 +227,16 @@ export async function duplicateTrip(id: string, opts?: { asTemplate?: boolean })
   if (activities.length > 0) {
     const cloned: Activity[] = activities.map((a) => ({ ...a, id: nanoid(), tripId: newId }))
     await db.activities.bulkPut(cloned)
+  }
+  if (packingItems.length > 0) {
+    const clonedPacking: PackingItem[] = packingItems.map((p) => ({
+      ...p,
+      id: nanoid(),
+      tripId: newId,
+      checked: opts?.asTemplate ? false : p.checked,
+      createdAt: now,
+    }))
+    await db.packingItems.bulkPut(clonedPacking)
   }
   return newId
 }
@@ -266,6 +310,83 @@ export async function setActivityImage(activityId: string, imageId: string | nul
   if (a.imageId && a.imageId !== imageId) await deleteImage(a.imageId)
   await db.activities.update(activityId, { imageId })
   await db.trips.update(a.tripId, { updatedAt: Date.now() })
+}
+
+export async function duplicateActivity(id: string): Promise<string | null> {
+  const original = await db.activities.get(id)
+  if (!original) return null
+  const sameDay = await db.activities
+    .where('[tripId+date]')
+    .equals([original.tripId, original.date])
+    .toArray()
+  const sorted = sameDay.sort((a, b) => a.order - b.order)
+  const idx = sorted.findIndex((a) => a.id === original.id)
+  const insertAt = idx >= 0 ? idx + 1 : sorted.length
+
+  await db.transaction('rw', db.activities, db.trips, async () => {
+    const tail = sorted.slice(insertAt)
+    for (const t of tail) {
+      await db.activities.update(t.id, { order: t.order + 1 })
+    }
+    await db.trips.update(original.tripId, { updatedAt: Date.now() })
+  })
+
+  const newId = nanoid()
+  const copy: Activity = {
+    ...original,
+    id: newId,
+    title: original.title ? `${original.title} (copy)` : '',
+    imageId: null,
+    order: original.order + 1,
+  }
+  await db.activities.put(copy)
+  await db.trips.update(original.tripId, { updatedAt: Date.now() })
+  return newId
+}
+
+export async function addPackingItem(
+  tripId: string,
+  input: { name: string; qty?: number; assignee?: string | null },
+): Promise<string> {
+  const existing = await db.packingItems.where('tripId').equals(tripId).toArray()
+  const maxOrder = existing.reduce((m, p) => Math.max(m, p.order), -1)
+  const item: PackingItem = {
+    id: nanoid(),
+    tripId,
+    name: input.name,
+    qty: Math.max(1, Math.floor(input.qty ?? 1)),
+    assignee: input.assignee ?? null,
+    checked: false,
+    order: maxOrder + 1,
+    createdAt: Date.now(),
+  }
+  await db.packingItems.put(item)
+  await db.trips.update(tripId, { updatedAt: Date.now() })
+  return item.id
+}
+
+export async function deletePackingItem(id: string): Promise<void> {
+  const item = await db.packingItems.get(id)
+  if (!item) return
+  await db.packingItems.delete(id)
+  await db.trips.update(item.tripId, { updatedAt: Date.now() })
+}
+
+export async function togglePackingItem(id: string, checked: boolean): Promise<void> {
+  const item = await db.packingItems.get(id)
+  if (!item) return
+  await db.packingItems.update(id, { checked })
+  await db.trips.update(item.tripId, { updatedAt: Date.now() })
+}
+
+export async function clearPackedItems(tripId: string): Promise<void> {
+  await db.transaction('rw', db.packingItems, db.trips, async () => {
+    await db.packingItems
+      .where('tripId')
+      .equals(tripId)
+      .modify({ checked: false })
+    await db.trips.update(tripId, { updatedAt: Date.now() })
+  })
 }
 
 if (typeof window !== 'undefined') {

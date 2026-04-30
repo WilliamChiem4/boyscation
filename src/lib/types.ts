@@ -81,11 +81,24 @@ export const SettlementSchema = z.object({
 })
 export type Settlement = z.infer<typeof SettlementSchema>
 
+export const PackingItemSchema = z.object({
+  id: z.string().min(1),
+  tripId: z.string().min(1),
+  name: z.string(),
+  qty: z.number().int().min(1).default(1),
+  assignee: z.string().nullable().default(null),
+  checked: z.boolean().default(false),
+  order: z.number(),
+  createdAt: z.number(),
+})
+export type PackingItem = z.infer<typeof PackingItemSchema>
+
 export const TripExportSchema = z.object({
   version: z.literal(1),
   trip: TripSchema,
   activities: z.array(ActivitySchema),
   images: z.array(TripExportImageSchema),
   settlements: z.array(SettlementSchema).default([]),
+  packingItems: z.array(PackingItemSchema).default([]),
 })
 export type TripExport = z.infer<typeof TripExportSchema>

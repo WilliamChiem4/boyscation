@@ -1,11 +1,12 @@
 import Dexie, { type Table } from 'dexie'
-import type { Activity, Settlement, StoredImage, Trip } from './types'
+import type { Activity, PackingItem, Settlement, StoredImage, Trip } from './types'
 
 class TripPlannerDB extends Dexie {
   trips!: Table<Trip, string>
   activities!: Table<Activity, string>
   images!: Table<StoredImage, string>
   settlements!: Table<Settlement, string>
+  packingItems!: Table<PackingItem, string>
 
   constructor() {
     super('trip-planner')
@@ -77,6 +78,13 @@ class TripPlannerDB extends Dexie {
             if (a.splitMode === undefined) a.splitMode = 'custom'
           })
       })
+    this.version(5).stores({
+      trips: 'id, updatedAt, isTemplate, archivedAt',
+      activities: 'id, tripId, [tripId+date], [tripId+date+order]',
+      images: 'id',
+      settlements: 'id, tripId, createdAt',
+      packingItems: 'id, tripId, [tripId+order]',
+    })
   }
 }
 
